@@ -18,16 +18,37 @@ class CoinDataset(Dataset):
     Returns:
     None
     '''
-    def __init__(self, yaml_file, transform=None):
+    def __init__(self, yaml_file, root_path):
         """
         Args:
+            root_path (str): Root path to the dataset dir
             yaml_file (str): Path to the YAML file containing dataset information.
             transform (callable, optional): Optional transform to be applied on a sample.
         """
+        self.root_path = root_path
+        self.class_dict = None
+
         with open(yaml_file, 'r') as file:
             self.data = yaml.safe_load(file)
 
-        self.transform = transform
+    def take_classes(self):
+        unique_classes = set()
+
+        for entry in self.data:
+            side = None
+            denomination = None
+
+            side = entry["classes"][0]["side"]
+            denomination = entry["classes"][2]["denomination"]
+
+            if side and denomination:
+                class_label = f"{side}_{denomination}"
+                unique_classes.add(class_label)
+
+        self.class_dict = {class_label: idx for idx, class_label in enumerate(sorted(unique_classes))}
+
+        return self.class_dict
+    
 
     def __len__(self):
         '''
@@ -56,24 +77,19 @@ class CoinDataset(Dataset):
 
         item = self.data[idx]
 
-        image_path = item['image']
+        image_path = os.path.join(self.root_path, item['image'])
 
         classes = item['classes']
-
-        return image_path, classes
+        denomination = self.class_dict[f'{classes[0]["side"]}_{classes[2]["denomination"]}']
+        return image_path, classes, denomination
 
 # Example usage
 if __name__ == "__main__":
     from torchvision import transforms
-
-    transform = transforms.Compose([
-        transforms.Resize((128, 128)),
-        transforms.ToTensor()
-    ])
-
+    root_dataset_path = "C:\\Users\\jakub\\Desktop\\PULP\\STUDIA\\Praca mgr\\DATASET_COINS"
     yaml_file_path = "dataset/test.yaml"
 
-    dataset = CoinDataset(yaml_file=yaml_file_path, transform=transform)
+    dataset = CoinDataset(yaml_file=yaml_file_path, root_path=root_dataset_path)
 
     dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
 

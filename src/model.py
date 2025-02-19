@@ -27,7 +27,8 @@ class FeatureExtractorReliefF:
         self.n_features_to_select = n_features_to_select
         self.device = torch.device(device if torch.cuda.is_available() and device=='cuda' else 'cpu')
         self.relief = None
-        self.selected_features_idx = None
+        self.selected_features_idx_side = None
+        self.selected_features_idx_class = None
 
         self.model = model
         self.model.eval()
@@ -70,7 +71,7 @@ class FeatureExtractorReliefF:
         
         return np.array(features)
 
-    def fit(self, image_paths, labels, batch_size=32):
+    def fit(self, image_paths, labels, version, batch_size=32):
         '''
         Train ReliefF feature selection model.
         
@@ -86,12 +87,16 @@ class FeatureExtractorReliefF:
         
         self.relief = ReliefF(n_features_to_select=self.n_features_to_select, n_neighbors=10)
         self.relief.fit(features, labels)
-        
-        self.selected_features_idx = self.relief.top_features_[:self.n_features_to_select]
+        if version == 'side':
+            self.selected_features_idx_side = self.relief.top_features_[:self.n_features_to_select]
+        elif version == 'class':
+            self.selected_features_idx_class = self.relief.top_features_[:self.n_features_to_select]
+        else:
+            KeyError('Wrong chossen version')
         
         return self
 
-    def __call__(self, image_paths, batch_size=32):
+    def __call__(self, image_paths, version, batch_size=32):
         '''
         Apply the trained ReliefF model to extract and select features.
         
@@ -106,9 +111,21 @@ class FeatureExtractorReliefF:
             raise ValueError("Model is not trained. Use the fit() method first.")
         
         features = self.extract_features(image_paths, batch_size)
-        
-        selected_features = features[:, self.selected_features_idx]
-        
+        if len(features.shape) > 1:
+            if version == 'side':
+                selected_features = features[:,self.selected_features_idx_side]
+            elif version == 'class':
+                selected_features = features[:,self.selected_features_idx_class]
+            else:
+                KeyError('Wrong chossen version')
+        else: 
+            if version == 'side':
+                selected_features = features[self.selected_features_idx_side]
+            elif version == 'class':
+                selected_features = features[self.selected_features_idx_class]
+            else:
+                KeyError('Wrong chossen version')
+
         return selected_features
 
     def save_relief(self, path):
@@ -130,7 +147,7 @@ class FeatureExtractorReliefF:
                 'selected_features_idx': self.selected_features_idx
             }, f)
 
-    def load_relief(self, path):
+    def load_relief(self, version, path):
         '''
         Load a trained ReliefF model from a file.
         
@@ -143,8 +160,12 @@ class FeatureExtractorReliefF:
         with open(path, 'rb') as f:
             data = pickle.load(f)
             self.relief = data['relief']
-            self.selected_features_idx = data['selected_features_idx']
-
+            if version == 'side':
+                self.selected_features_idx_side = data['selected_features_idx']
+            elif version == 'class':
+                self.selected_features_idx_class = data['selected_features_idx']
+            else:
+                KeyError('Wrong chossen version')
 
 class ARCIKELM:
     '''
@@ -438,7 +459,7 @@ class CoinClassifier:
         self.obverse_classifier_initialized = False
         self.reverse_classifier_initialized = False
     
-    def prepare_reliefF(self, image_paths, batch_size, path=None):
+    def prepare_reliefF(self, image_paths, labels, batch_size, version, path=None):
         '''
         Prepare the ReliefF feature extractor.
         
@@ -451,11 +472,11 @@ class CoinClassifier:
         None
         '''
         if path is None:
-            self.reliefF.fit(image_paths, batch_size)  
+            self.reliefF.fit(image_paths, labels, version, batch_size)  
         else:
             self.reliefF.load_relief(path) 
 
-    def prepare_features_batch(self, image_paths):
+    def prepare_features_batch(self, image_paths, version):
         '''
         Prepare feature vectors for a batch of images.
         
@@ -470,7 +491,7 @@ class CoinClassifier:
         valid_paths = []
         
         for img_path in image_paths:
-            features = self.reliefF(img_path)
+            features = self.reliefF([img_path], version, batch_size=1)
             if features is not None:
                 features_list.append(features)
                 valid_paths.append(img_path)
@@ -488,11 +509,10 @@ class CoinClassifier:
         Returns:
         None
         '''
-        features, _ = self.prepare_features_batch(paths)
+        features, _ = self.prepare_features_batch(paths, 'side')
         
-        # Prepare labels: 'revers' -> 1, 'obverse' -> 0
-        labels = labels[0]['side']
-        labels = [1 if label == 'revers' else 0 for label in labels]
+        # Prepare labels: 'revers' -> 1, 'avers' -> 0
+        labels = [1 if label == 'revers' else 0 for label in labels[0]['side']]
         
         X = np.vstack(features)
         y = np.array(labels)
@@ -514,7 +534,7 @@ class CoinClassifier:
         Returns:
         valid_paths (list of str): List of image paths that had valid features.
         '''
-        features, valid_paths = self.prepare_features_batch(image_paths)
+        features, valid_paths = self.prepare_features_batch(image_paths, 'class')
         
         # Get valid labels for training
         valid_labels = [labels[i] for i, path in enumerate(image_paths) if path in valid_paths]
@@ -546,7 +566,7 @@ class CoinClassifier:
         Returns:
         tuple: A tuple with the side ("obverse", "reverse", or "uncertain") and coin prediction (if available).
         '''
-        features = self.reliefF(image_path)
+        features = self.reliefF(image_path, 'side')
         if features is None:
             return None, None
             
@@ -563,6 +583,7 @@ class CoinClassifier:
         
         # Choose the appropriate classifier based on the side prediction
         classifier = self.obverse_classifier if side_pred == 0 else self.reverse_classifier
+        features = self.reliefF(image_path, 'class')
         coin_pred = classifier.predict(features.reshape(1, -1))[0]
         
         return "obverse" if side_pred == 0 else "reverse", coin_pred
@@ -577,7 +598,7 @@ class CoinClassifier:
         Returns:
         dict: Dictionary containing the probabilities for obverse and reverse.
         '''
-        features = self.reliefF(image_path)
+        features = self.reliefF(image_path, 'side')
         if features is None:
             return None
             
