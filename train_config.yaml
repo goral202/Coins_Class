@@ -1,0 +1,12 @@
+all_classes: ["CHF_0,1", "CHF_0,2", "CHF_0,5", "CHF_1", "CHF_2", "CHF_5", "EUR_0,1", "EUR_0,2", "EUR_0,5", "EUR_1", "EUR_2", "GBP_0,1", "GBP_0,2", "GBP_0,05", "GBP_0,5", "GBP_1", "GBP_1_new", "GBP_2", "HRK_1", "HRK_2", "HRK_5", "SEK_5", "SEK_10", "USD_0,1", "USD_0,05", "USD_0,5", "USD_0,25", "USD_1"]
+
+stages:
+  init:
+    denominations: ["CHF_0,1", "EUR_0,5", "GBP_1", "GBP_1_new", "HRK_5"]
+  stage_1:
+    denominations: ["CHF_0,1", "CHF_2", "EUR_0,5", "GBP_0,1", "GBP_0,5", "GBP_1", "GBP_1_new", "HRK_5", "SEK_5","USD_0,5"]
+  stage_2:
+    denominations: ["CHF_0,1", "CHF_0,2", "CHF_2", "EUR_0,2", "EUR_0,5", "EUR_2", "GBP_0,1", "GBP_0,2", "GBP_0,5", "GBP_1", "GBP_1_new", "HRK_1", "HRK_2", "HRK_5", "SEK_5", "SEK_10", "USD_0,1", "USD_0,05", "USD_0,5", "USD_1"]
+  stage_3:
+    denominations: ["CHF_0,1", "CHF_0,2", "CHF_0,5", "CHF_1", "CHF_2", "CHF_5", "EUR_0,1", "EUR_0,2", "EUR_0,5", "EUR_1", "EUR_2", "GBP_0,1", "GBP_0,2", "GBP_0,05", "GBP_0,5", "GBP_1", "GBP_1_new", "GBP_2", "HRK_1", "HRK_2", "HRK_5", "SEK_5", "SEK_10", "USD_0,1", "USD_0,05", "USD_0,5", "USD_0,25", "USD_1"]
+

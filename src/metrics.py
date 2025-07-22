@@ -3,6 +3,7 @@ from collections import Counter, defaultdict
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
+from sklearn.metrics import f1_score
 
 def count_metrics(dict_classes, output_dir="results"):
     os.makedirs(output_dir, exist_ok=True)
@@ -59,6 +60,34 @@ def count_metrics(dict_classes, output_dir="results"):
         total_examples = sum(c["total"] for c in side_stats.values())
         global_accuracy = total_correct / total_examples
         f.write(f"\n🔍 Globalna skuteczność: {global_accuracy:.2%} ({total_correct}/{total_examples})\n")
+
+# F1-score per side
+        for side in dict_classes:
+            y_true = []
+            y_pred = []
+
+            for cluster_id, labels in dict_classes[side].items():
+                dominant_class = cluster_stats[(side, cluster_id)]["dominant_class"]
+                for label in labels:
+                    y_true.append(int(label.item()))
+                    y_pred.append(dominant_class)
+
+            f1 = f1_score(y_true, y_pred, average='macro', zero_division=0)
+            f.write(f"F1-score (macro) dla strony '{side}': {f1:.4f}\n")
+
+        # Global F1-score
+        y_true_global = []
+        y_pred_global = []
+
+        for side in dict_classes:
+            for cluster_id, labels in dict_classes[side].items():
+                dominant_class = cluster_stats[(side, cluster_id)]["dominant_class"]
+                for label in labels:
+                    y_true_global.append(int(label.item()))
+                    y_pred_global.append(dominant_class)
+
+        global_f1 = f1_score(y_true_global, y_pred_global, average='macro', zero_division=0)
+        f.write(f"\n🏁 Globalny F1-score (macro): {global_f1:.4f}\n")
 
     confusion_matrices = {}
 

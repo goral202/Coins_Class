@@ -31,9 +31,9 @@ def plot_counter(counter, title, output_file):
     plt.show()
 
 
-plot_counter(side_counter, "Liczebność klas - side", 'dataset/side.png')
+plot_counter(side_counter, "Liczebność klas - side", 'outputs/side.png')
 print(side_counter)
-plot_counter(coin_counter, "Liczebność klas - coin", 'dataset/coin.png')
+plot_counter(coin_counter, "Liczebność klas - coin", 'outputs/coin.png')
 print(coin_counter)
-plot_counter(denomination_counter, "Liczebność klas - denomination", 'dataset/denomination.png')
+plot_counter(denomination_counter, "Liczebność klas - denomination", 'outputs/denomination.png')
 print(denomination_counter)

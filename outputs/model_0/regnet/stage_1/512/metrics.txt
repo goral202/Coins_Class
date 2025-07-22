@@ -1,0 +1,42 @@
+[obverse][Cluster 0] ➜ Klasa: 0, Skuteczność: 64.80% (348/537)
+[obverse][Cluster 2] ➜ Klasa: 3, Skuteczność: 24.26% (352/1451)
+[obverse][Cluster 4] ➜ Klasa: 7, Skuteczność: 23.69% (390/1646)
+[obverse][Cluster 5] ➜ Klasa: 4, Skuteczność: 52.63% (10/19)
+[obverse][Cluster 6] ➜ Klasa: 4, Skuteczność: 88.89% (128/144)
+[obverse][Cluster 3] ➜ Klasa: 6, Skuteczność: 55.51% (388/699)
+[obverse][Cluster 7] ➜ Klasa: 4, Skuteczność: 100.00% (4/4)
+[obverse][Cluster 1] ➜ Klasa: 2, Skuteczność: 74.24% (98/132)
+[obverse][Cluster 8] ➜ Klasa: 4, Skuteczność: 23.21% (13/56)
+[obverse][Cluster 9] ➜ Klasa: 9, Skuteczność: 65.62% (21/32)
+[obverse][Cluster 10] ➜ Klasa: 0, Skuteczność: 25.00% (13/52)
+[obverse][Cluster 11] ➜ Klasa: 2, Skuteczność: 63.16% (12/19)
+[obverse][Cluster 12] ➜ Klasa: 2, Skuteczność: 65.38% (17/26)
+[obverse][Cluster 13] ➜ Klasa: 4, Skuteczność: 85.71% (30/35)
+[obverse][Cluster 14] ➜ Klasa: 4, Skuteczność: 76.19% (16/21)
+[obverse][Cluster 15] ➜ Klasa: 4, Skuteczność: 29.55% (13/44)
+[obverse][Cluster 16] ➜ Klasa: 4, Skuteczność: 84.80% (145/171)
+[obverse][Cluster 17] ➜ Klasa: 4, Skuteczność: 100.00% (23/23)
+[obverse][Cluster 18] ➜ Klasa: 2, Skuteczność: 21.43% (9/42)
+[obverse][Cluster 19] ➜ Klasa: 2, Skuteczność: 85.71% (36/42)
+[obverse][Cluster 20] ➜ Klasa: 5, Skuteczność: 50.00% (1/2)
+[obverse][Cluster 21] ➜ Klasa: 2, Skuteczność: 95.24% (20/21)
+[obverse][Cluster 22] ➜ Klasa: 4, Skuteczność: 100.00% (7/7)
+[obverse][Cluster 23] ➜ Klasa: 4, Skuteczność: 25.00% (1/4)
+[obverse][Cluster 24] ➜ Klasa: 2, Skuteczność: 100.00% (2/2)
+[reverse][Cluster 4] ➜ Klasa: 1, Skuteczność: 25.52% (402/1575)
+[reverse][Cluster 1] ➜ Klasa: 2, Skuteczność: 52.84% (326/617)
+[reverse][Cluster 0] ➜ Klasa: 0, Skuteczność: 73.82% (516/699)
+[reverse][Cluster 3] ➜ Klasa: 6, Skuteczność: 69.45% (482/694)
+[reverse][Cluster 2] ➜ Klasa: 5, Skuteczność: 49.57% (115/232)
+[reverse][Cluster 5] ➜ Klasa: 2, Skuteczność: 25.40% (16/63)
+[reverse][Cluster 6] ➜ Klasa: 1, Skuteczność: 39.58% (38/96)
+
+Skuteczność metody: 43.36%
+Skuteczność dla strony 'obverse': 40.09% (2097/5231)
+Skuteczność dla strony 'reverse': 47.66% (1895/3976)
+
+🔍 Globalna skuteczność: 43.36% (3992/9207)
+F1-score (macro) dla strony 'obverse': 0.3361
+F1-score (macro) dla strony 'reverse': 0.2937
+
+🏁 Globalny F1-score (macro): 0.3898

@@ -1,0 +1,4 @@
+models/
+output/
+backup/
+**/__pycache__/

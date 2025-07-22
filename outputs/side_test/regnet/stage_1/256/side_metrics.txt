@@ -1,0 +1,1 @@
+Total wrong predictions: 2267/25575 Accuracy: 91.14%

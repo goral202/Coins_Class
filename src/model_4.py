@@ -183,11 +183,11 @@ class ARCIKELM:
         self.C = C
         self.kernel = kernel
         self.gamma = gamma
-        self.X_L = None  # Kernel matrix vectors
-        self.beta = None  # Output weights
+        self.X_L = None  
+        self.beta = None  
         self.n_classes = 0
-        self.neuron_activation = None  # Neuron eligibility matrix
-        self.class_counts = {}  # Track samples per class
+        self.neuron_activation = None  
+        self.class_counts = {} 
         self.max_negative_samples = max_negative_samples
 
     def _compute_kernel(self, X, Y=None):
@@ -374,28 +374,23 @@ class ARCIKELM:
         if len(self.neuron_activation) == 0:
             return
             
-        # Identify inactive neurons
         inactive_neurons = np.where( i - self.neuron_activation > activation_threshold)[0]
         
-        # Remove neurons representing dominant classes with few occurrences
         minority_threshold = np.average(list(self.class_counts.values()))
         neurons_to_remove = []
 
         for neuron_idx in inactive_neurons:
-            # Find which class the neuron corresponds to
             if self.class_counts[np.argmax(self.beta[neuron_idx])] > minority_threshold:
                 neurons_to_remove.append(neuron_idx)
                 
         if neurons_to_remove:
-            # Remove redundant neurons
             self.X_L = np.delete(self.X_L, neurons_to_remove, axis=0)
             self.beta = np.delete(self.beta, neurons_to_remove, axis=0)
             self.neuron_activation = np.delete(self.neuron_activation, neurons_to_remove)
             self.T_e = np.delete(self.T_e, neurons_to_remove, axis=0)
 
     def predict(self, X):
-# TODO: 
-# - check this code 
+
         for class_number in range(self.n_classes):
             model_data = self.classifiers[class_number]
             scaler = model_data["scaler"]
@@ -545,19 +540,16 @@ class CoinClassifier:
         if features is None:
             features = self.prepare_features_batch(batch_tensors, 'class')
         
-        # Select classifier based on obverse or reverse
         classifier = self.obverse_classifier if is_avers else self.reverse_classifier
         initialized = self.obverse_classifier_initialized if is_avers else self.reverse_classifier_initialized
         
         if not initialized:
-            # Initialize the classifier if not already initialized
             classifier.initialize(features, np.array(labels))
             if is_avers:
                 self.obverse_classifier_initialized = True
             else:
                 self.reverse_classifier_initialized = True
         else:   
-            # Perform sequential learning if the classifier has been initialized
             classifier.sequential_learning(features, np.array(labels))
             
         return 0

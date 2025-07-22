@@ -1,0 +1,39 @@
+[obverse][Cluster 1] ➜ Klasa: 2, Skuteczność: 29.59% (287/970)
+[obverse][Cluster 2] ➜ Klasa: 5, Skuteczność: 52.77% (305/578)
+[obverse][Cluster 4] ➜ Klasa: 7, Skuteczność: 26.44% (363/1373)
+[obverse][Cluster 0] ➜ Klasa: 0, Skuteczność: 36.96% (418/1131)
+[obverse][Cluster 3] ➜ Klasa: 6, Skuteczność: 32.08% (213/664)
+[obverse][Cluster 5] ➜ Klasa: 2, Skuteczność: 60.00% (6/10)
+[obverse][Cluster 6] ➜ Klasa: 2, Skuteczność: 94.87% (74/78)
+[obverse][Cluster 7] ➜ Klasa: 4, Skuteczność: 56.86% (29/51)
+[obverse][Cluster 8] ➜ Klasa: 4, Skuteczność: 91.30% (42/46)
+[obverse][Cluster 9] ➜ Klasa: 6, Skuteczność: 100.00% (15/15)
+[obverse][Cluster 10] ➜ Klasa: 6, Skuteczność: 80.00% (4/5)
+[obverse][Cluster 11] ➜ Klasa: 2, Skuteczność: 100.00% (2/2)
+[reverse][Cluster 3] ➜ Klasa: 6, Skuteczność: 45.63% (491/1076)
+[reverse][Cluster 4] ➜ Klasa: 7, Skuteczność: 41.82% (258/617)
+[reverse][Cluster 0] ➜ Klasa: 0, Skuteczność: 40.63% (503/1238)
+[reverse][Cluster 1] ➜ Klasa: 2, Skuteczność: 55.06% (294/534)
+[reverse][Cluster 5] ➜ Klasa: 4, Skuteczność: 84.21% (304/361)
+[reverse][Cluster 6] ➜ Klasa: 4, Skuteczność: 78.26% (18/23)
+[reverse][Cluster 7] ➜ Klasa: 4, Skuteczność: 76.92% (10/13)
+[reverse][Cluster 8] ➜ Klasa: 8, Skuteczność: 83.10% (59/71)
+[reverse][Cluster 9] ➜ Klasa: 4, Skuteczność: 88.89% (72/81)
+[reverse][Cluster 10] ➜ Klasa: 1, Skuteczność: 62.03% (49/79)
+[reverse][Cluster 11] ➜ Klasa: 4, Skuteczność: 28.21% (11/39)
+[reverse][Cluster 12] ➜ Klasa: 0, Skuteczność: 40.66% (37/91)
+[reverse][Cluster 13] ➜ Klasa: 1, Skuteczność: 73.68% (14/19)
+[reverse][Cluster 14] ➜ Klasa: 4, Skuteczność: 44.44% (4/9)
+[reverse][Cluster 15] ➜ Klasa: 4, Skuteczność: 26.67% (8/30)
+[reverse][Cluster 16] ➜ Klasa: 9, Skuteczność: 50.00% (1/2)
+[reverse][Cluster 2] ➜ Klasa: 5, Skuteczność: 100.00% (1/1)
+
+Skuteczność metody: 42.27%
+Skuteczność dla strony 'obverse': 35.71% (1758/4923)
+Skuteczność dla strony 'reverse': 49.81% (2134/4284)
+
+🔍 Globalna skuteczność: 42.27% (3892/9207)
+F1-score (macro) dla strony 'obverse': 0.2500
+F1-score (macro) dla strony 'reverse': 0.3564
+
+🏁 Globalny F1-score (macro): 0.3214

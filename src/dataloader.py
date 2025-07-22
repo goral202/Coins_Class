@@ -4,6 +4,20 @@ from torch.utils.data import Dataset, DataLoader
 from PIL import Image
 import torchvision.transforms as transforms
 import numpy as np
+import cv2
+
+
+def apply_sobel_opencv(pil_img):
+    img_gray = np.array(pil_img.convert('L'))
+    
+    sobelx = cv2.Sobel(img_gray, cv2.CV_64F, 1, 0, ksize=3)
+    sobely = cv2.Sobel(img_gray, cv2.CV_64F, 0, 1, ksize=3)
+    sobel_combined = cv2.magnitude(sobelx, sobely)
+
+    sobel_uint8 = cv2.convertScaleAbs(sobel_combined) 
+    sobel_rgb = cv2.cvtColor(sobel_uint8, cv2.COLOR_GRAY2RGB) 
+    return Image.fromarray(sobel_rgb)
+
 
 class CoinDataset(Dataset):
     '''
@@ -108,13 +122,17 @@ class CoinDataset(Dataset):
         image_path = os.path.join(self.root_path, item['image'])
 
         img = Image.open(image_path).convert('RGB')
+
+        # img = Image.open(image_path)
+        # sobel_img = apply_sobel_opencv(img)
+        # img_tensor = self.transform(sobel_img)
+
         img_tensor = self.transform(img)
 
         classes = item['classes']
         denomination = self.class_dict[f'{classes[2]["denomination"]}']
         return img_tensor, classes, denomination, image_path
 
-# Example usage
 if __name__ == "__main__":
     
     with open("config.yaml", "r") as f:

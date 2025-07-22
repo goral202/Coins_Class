@@ -242,15 +242,10 @@ class ARCIKELM:
         
         self.X_L = X
 
-        # K = self._compute_kernel(X, self.X_L)
         T = np.zeros((len(y), self.n_classes))
         for i, label in enumerate(y):
             T[i, label] = 1
-        # T = y
         self.T_e = T
-        # I = np.eye(len(K))
-        # self.G = np.linalg.inv(I/self.C + K.T @ K)
-        # self.beta = self.G @ K.T @ T
         
         self.neuron_activation = np.zeros(len(self.X_L))
         
@@ -268,37 +263,20 @@ class ARCIKELM:
         Returns:
         None
         '''
-        # new_class = np.max(y_new)
-        # self.class_counts[new_class] = len(y_new)
+
 
         new_class = y_new
         self.class_counts[new_class] = 1
-        
-        # M = np.zeros((self.beta.shape[1], self.beta.shape[1] + 1))
-        # np.fill_diagonal(M, 1)
-        # self.beta = self.beta @ M
-        
+               
 
         self.X_L = np.vstack([self.X_L, X_new])
 
-        # K_old = self._compute_kernel(self.X_L[:-X_new.shape[0]], self.X_L[:-X_new.shape[0]])  # [n_old, n_old]
-        # K_new = self._compute_kernel(X_new, self.X_L[:-X_new.shape[0]])          # [1, n_old]
-        # Z_n = self._compute_kernel(X_new, X_new)                    # [1, 1]
-
-        # Gn = np.block([
-        #     [K_old.T @ K_old,           K_old.T @ K_new.T],
-        #     [K_new @ K_old,             Z_n.T @ Z_n]
-        # ])
-
+       
         Tn = np.zeros((self.X_L.shape[0], new_class))
         Tn[:self.T_e.shape[0], :self.T_e.shape[1]] = self.T_e
         Tn[-X_new.shape[0]:, -1] = 1
         self.T_e = Tn
 
-        # I = np.eye(Gn.shape[0])
-        # self.G = np.linalg.inv(I / self.C + Gn)
-        # self.beta = self.G @ Gn.T @ self.T_e
-        # self.neuron_activation = np.zeros(len(self.X_L))
         self.n_classes += 1
         neuron_activation = np.zeros(len(self.X_L))
         neuron_activation[:] = i
@@ -344,20 +322,16 @@ class ARCIKELM:
         if len(self.neuron_activation) == 0:
             return
             
-        # Identify inactive neurons
         inactive_neurons = np.where( i - self.neuron_activation > activation_threshold)[0]
         
-        # Remove neurons representing dominant classes with few occurrences
         minority_threshold = np.average(list(self.class_counts.values()))
         neurons_to_remove = []
 
         for neuron_idx in inactive_neurons:
-            # Find which class the neuron corresponds to
             if self.class_counts[np.argmax(self.beta[neuron_idx])] > minority_threshold:
                 neurons_to_remove.append(neuron_idx)
                 
         if neurons_to_remove:
-            # Remove redundant neurons
             self.X_L = np.delete(self.X_L, neurons_to_remove, axis=0)
             self.beta = np.delete(self.beta, neurons_to_remove, axis=0)
             self.neuron_activation = np.delete(self.neuron_activation, neurons_to_remove)
@@ -410,44 +384,9 @@ class ARCIKELM:
         K = self._compute_kernel(X, self.X_L[selected_indices])
         predictions = K @ beta
 
-        # self._remove_redundant_neurons(i)
 
         return np.argmax(predictions, axis=1), predictions[0][np.argmax(predictions, axis=1)[0]]
 
-
-    # def predict(self, X, class_number, i):
-    #     '''
-    #     Predict the class labels for the input samples.
-        
-    #     Parameters:
-    #     X (np.ndarray): Input feature matrix.
-        
-    #     Returns:
-    #     np.ndarray: Predicted class labels for each sample.
-    #     '''
-
-
-    #     K_init = self._compute_kernel(self.X_L, self.X_L)
-    #     T = np.zeros((self.T_e.shape[0], 2))
-
-    #     membership = self._compute_membership(X)
-    #     h0 = np.argmax(membership)
-    #     self.neuron_activation[h0] = i
-
-    #     mask = self.T_e[:, class_number] == 1
-    #     T[mask, 0] = 1
-    #     T[~mask, 1] = 1
-    #     I = np.eye(len(K_init))
-    #     self.G = np.linalg.inv(I/self.C + K_init.T @ K_init)
-    #     self.beta = self.G @ K_init.T @ T
-        
-    #     K = self._compute_kernel(X, self.X_L)
-    #     predictions = K @ self.beta
-
-    #     self._remove_redundant_neurons(i)
-
-    #     return np.argmax(predictions, axis=1), predictions[0][np.argmax(predictions, axis=1)[0]]
-    
 
 class CoinClassifier:
     '''
@@ -582,19 +521,16 @@ class CoinClassifier:
             features = self.prepare_features_batch(batch_tensors, 'class')
         
         
-        # Select classifier based on obverse or reverse
         classifier = self.obverse_classifier if is_avers else self.reverse_classifier
         initialized = self.obverse_classifier_initialized if is_avers else self.reverse_classifier_initialized
         
         if not initialized:
-            # Initialize the classifier if not already initialized
             classifier.initialize(features, np.array(labels))
             if is_avers:
                 self.obverse_classifier_initialized = True
             else:
                 self.reverse_classifier_initialized = True
         else:   
-            # Perform sequential learning if the classifier has been initialized
             classifier.sequential_learning(features, np.array(labels))
             
         return 0
@@ -613,13 +549,10 @@ class CoinClassifier:
         if features is None:
             return None, None
             
-        # Scale features for side classification
         features_scaled = self.side_scaler.transform(features.reshape(1, -1))
         
-        # Predict side (obverse or reverse)
         side_pred = self.side_classifier.predict(features_scaled)[0]        
         
-        # Choose the appropriate classifier based on the side prediction
         classifier = self.obverse_classifier if side_pred == 0 else self.reverse_classifier
         features = self.reliefF(image_path, 'class')
 
@@ -643,8 +576,6 @@ class CoinClassifier:
             features = self.prepare_features_batch(batch_tensors, 'class')
         
         classifier = self.obverse_classifier if is_avers else self.reverse_classifier
-        # label = np.zeros(classifier.n_classes + 1)
-        # label[-1] = 1 
         label = classifier.n_classes + 1
         classifier.add_new_class(features, label, i)
         
