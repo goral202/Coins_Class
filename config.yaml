@@ -1,0 +1,4 @@
+root_dataset_path: "C:\\DATASETS\\COINS"
+train_yaml_file_path: "dataset/test.yaml"
+test_yaml_file_path: "dataset/train.yaml"
+train_config: "train_config.yaml"

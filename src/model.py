@@ -8,7 +8,13 @@ from sklearn.svm import SVC
 from sklearn.preprocessing import StandardScaler
 import pickle
 from skrebate import ReliefF
-
+import joblib
+import os
+import torchvision.transforms as T
+from PIL import Image
+import numpy as np
+import random
+from utils import ImageAugmentation
 
 
 class FeatureExtractorReliefF:
@@ -33,17 +39,8 @@ class FeatureExtractorReliefF:
         self.model = model
         self.model.eval()
         
-        self.transform = transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            transforms.Normalize(
-                mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225]
-            )
-        ])
-
-    def extract_features(self, image_paths, batch_size=32):
+        
+    def extract_features(self, batch_tensors, batch_size=32):
         '''
         Extract features from images using a pretrained model (e.g., ResNet50).
         
@@ -56,22 +53,15 @@ class FeatureExtractorReliefF:
         '''
         features = []
         with torch.no_grad():
-            for i in range(0, len(image_paths), batch_size):
-                batch_paths = image_paths[i:i + batch_size]
-                batch_tensors = []
-                
-                for img_path in batch_paths:
-                    img = Image.open(img_path).convert('RGB')
-                    img_tensor = self.transform(img)
-                    batch_tensors.append(img_tensor)
-                
-                batch = torch.stack(batch_tensors).to(self.device)
-                batch_features = self.model(batch)
-                features.extend(batch_features.squeeze().cpu().numpy())
+            for i in range(len(batch_tensors)):
+                # batch = torch.stack(batch_tensors).to(self.device)
+                batch = batch_tensors[i].to(self.device)
+                batch_features = self.model(batch.unsqueeze(0))
+                features.extend(batch_features.squeeze((-1, -2)).cpu().numpy())
         
         return np.array(features)
 
-    def fit(self, image_paths, labels, version, batch_size=32):
+    def fit(self, batch_tensors, labels, version, batch_size=32):
         '''
         Train ReliefF feature selection model.
         
@@ -83,7 +73,7 @@ class FeatureExtractorReliefF:
         Returns:
         self: The trained FeatureExtractorReliefF object.
         '''
-        features = self.extract_features(image_paths, batch_size)
+        features = self.extract_features(batch_tensors, batch_size)
         
         self.relief = ReliefF(n_features_to_select=self.n_features_to_select, n_neighbors=10)
         self.relief.fit(features, labels)
@@ -96,7 +86,7 @@ class FeatureExtractorReliefF:
         
         return self
 
-    def __call__(self, image_paths, version, batch_size=32):
+    def __call__(self, batch_tensors, version, batch_size=32):
         '''
         Apply the trained ReliefF model to extract and select features.
         
@@ -110,7 +100,7 @@ class FeatureExtractorReliefF:
         if self.relief is None:
             raise ValueError("Model is not trained. Use the fit() method first.")
         
-        features = self.extract_features(image_paths, batch_size)
+        features = self.extract_features(batch_tensors, batch_size)
         if len(features.shape) > 1:
             if version == 'side':
                 selected_features = features[:,self.selected_features_idx_side]
@@ -128,7 +118,7 @@ class FeatureExtractorReliefF:
 
         return selected_features
 
-    def save_relief(self, path):
+    def save_relief(self, path, version):
         '''
         Save the trained ReliefF model to a file.
         
@@ -140,11 +130,16 @@ class FeatureExtractorReliefF:
         '''
         if self.relief is None:
             raise ValueError("Model is not trained. Use the fit() method first.")
-        
+        if version == 'side':
+            selected_features = self.selected_features_idx_side
+            path = f'{path}/reliefF_side.pkl'
+        elif version == 'class':
+            selected_features = self.selected_features_idx_class
+            path = f'{path}/reliefF_class.pkl'
         with open(path, 'wb') as f:
             pickle.dump({
                 'relief': self.relief,
-                'selected_features_idx': self.selected_features_idx
+                'selected_features_idx': selected_features
             }, f)
 
     def load_relief(self, version, path):
@@ -246,12 +241,12 @@ class ARCIKELM:
 
         # Compute the kernel matrix
         K = self._compute_kernel(X, self.X_L)
-        
         # Prepare target matrix with one-hot encoding
         T = np.zeros((len(y), self.n_classes))
         for i, label in enumerate(y):
             T[i, label] = 1
-            
+        # T = y
+        self.T_e = T
         # Calculate the initial output weights (beta)
         I = np.eye(len(K))
         self.G = np.linalg.inv(I/self.C + K.T @ K)
@@ -262,9 +257,9 @@ class ARCIKELM:
         
         # Track the count of samples per class
         for label in y:
-            self.class_counts[label[0]] = self.class_counts.get(label[0], 0) + 1
+            self.class_counts[label] = self.class_counts.get(label, 0) + 1
 
-    def add_new_class(self, X_new, y_new):
+    def add_new_class(self, X_new, y_new, i):
         '''
         Add a new class to the network and update the kernel matrix and weights.
         
@@ -275,8 +270,11 @@ class ARCIKELM:
         Returns:
         None
         '''
-        new_class = np.max(y_new)
-        self.class_counts[new_class] = len(y_new)
+        # new_class = np.max(y_new)
+        # self.class_counts[new_class] = len(y_new)
+
+        new_class = y_new
+        self.class_counts[new_class] = 1
         
         # Add a transformation matrix to account for the new class
         M = np.zeros((self.beta.shape[1], self.beta.shape[1] + 1))
@@ -284,28 +282,42 @@ class ARCIKELM:
         self.beta = self.beta @ M
         
         # Add new hidden neurons (using a subset of new samples)
-        n_new_samples = int(0.1 * len(X_new))  # 10% of new samples
-        indices = np.random.choice(len(X_new), n_new_samples, replace=False)
+
         self.X_L = np.vstack([self.X_L, X_new])
 
-        # Update kernel matrix and output weights (beta)
-        K_new = self._compute_kernel(X_new, self.X_L)
-        
-        # Prepare target matrix for the new class
-        T_new = np.zeros((len(y_new), self.beta.shape[1]))
-        T_new[:, -1] = 1
-        
-        # Update G matrix and beta using the new kernel
-        K_total = self._compute_kernel(np.vstack([X_new]), self.X_L)
-        I = np.eye(len(K_total))
-        self.G = np.linalg.inv(I/self.C + K_total.T @ K_total)
-        self.beta = self.G @ K_total.T @ np.vstack([T_new])
-        
-        # Update neuron activation matrix and increment the number of classes
-        self.neuron_activation = np.zeros(len(self.X_L))
-        self.n_classes += 1
+        # K_old = self._compute_kernel(self.X_L[:-X_new.shape[0]], self.X_L[:-X_new.shape[0]])  # [n_old, n_old]
+        # K_new = self._compute_kernel(X_new, self.X_L[:-X_new.shape[0]])          # [1, n_old]
+        # Z_n = self._compute_kernel(X_new, X_new)                    # [1, 1]
 
-    def sequential_learning(self, X, y, threshold=0.1):
+        # Gn = np.block([
+        #     [K_old.T @ K_old,           K_old.T @ K_new.T],
+        #     [K_new @ K_old,             Z_n.T @ Z_n]
+        # ])
+
+        Tn = np.zeros((self.X_L.shape[0], new_class))
+        Tn[:self.T_e.shape[0], :self.T_e.shape[1]] = self.T_e
+        Tn[-X_new.shape[0]:, -1] = 1
+        self.T_e = Tn
+
+        # I = np.eye(Gn.shape[0])
+        # self.G = np.linalg.inv(I / self.C + Gn)
+        # self.beta = self.G @ Gn.T @ self.T_e
+        # self.neuron_activation = np.zeros(len(self.X_L))
+
+        # Compute the kernel matrix
+        K = self._compute_kernel(self.X_L, self.X_L)
+
+        I = np.eye(len(K))
+        self.G = np.linalg.inv(I/self.C + K.T @ K)
+        self.beta = self.G @ K.T @ self.T_e
+
+        self.n_classes += 1
+        neuron_activation = np.zeros(len(self.X_L))
+        neuron_activation[:] = i
+        neuron_activation[:-X_new.shape[0]] = self.neuron_activation
+        self.neuron_activation = neuron_activation
+        
+    def sequential_learning(self, X, y, current_i, threshold=0.1):
         '''
         Perform sequential learning by adding new neurons as needed for unseen samples.
         
@@ -347,13 +359,15 @@ class ARCIKELM:
                 T_i[0, y_i] = 1
                 
                 # Adjust beta with the new sample
+                I = np.eye(len(K_i))
+                self.G = self.G - self.G @ K_i.T @ np.linalg.inv(I/self.C + K_i @ self.G @ K_i.T) @ K_i @ self.G
                 self.beta = self.beta + self.G @ K_i.T @ (T_i - K_i @ self.beta)
             
             # Update class counts
             self.class_counts[y_i] = self.class_counts.get(y_i, 0) + 1
             
             # Check for and remove redundant neurons
-            self._remove_redundant_neurons()
+            self._remove_redundant_neurons(current_i)
 
     def _update_G(self, K_new):
         '''
@@ -381,7 +395,7 @@ class ARCIKELM:
         '''
         return self.beta + self.G @ K_new.T @ (T_new - K_new @ self.beta)
 
-    def _remove_redundant_neurons(self, activation_threshold=100):
+    def _remove_redundant_neurons(self, i, activation_threshold=300):
         '''
         Remove neurons that have not been activated recently.
         
@@ -395,10 +409,10 @@ class ARCIKELM:
             return
             
         # Identify inactive neurons
-        inactive_neurons = np.where(self.neuron_activation < activation_threshold)[0]
+        inactive_neurons = np.where( i - self.neuron_activation > activation_threshold)[0]
         
         # Remove neurons representing dominant classes with few occurrences
-        minority_threshold = np.median(list(self.class_counts.values()))
+        minority_threshold = np.average(list(self.class_counts.values()))
         neurons_to_remove = []
         
         for neuron_idx in inactive_neurons:
@@ -411,8 +425,15 @@ class ARCIKELM:
             self.X_L = np.delete(self.X_L, neurons_to_remove, axis=0)
             self.beta = np.delete(self.beta, neurons_to_remove, axis=0)
             self.neuron_activation = np.delete(self.neuron_activation, neurons_to_remove)
+            self.T_e = np.delete(self.T_e, neurons_to_remove, axis=0)
+            self.G = np.delete(self.G, neurons_to_remove, axis=0)
 
-    def predict(self, X):
+            # K = self._compute_kernel(self.X_L, self.X_L)
+            # I = np.eye(len(K))
+            # self.G = np.linalg.inv(I/self.C + K.T @ K)
+
+            
+    def predict(self, X, i=None):
         '''
         Predict the class labels for the input samples.
         
@@ -422,10 +443,14 @@ class ARCIKELM:
         Returns:
         np.ndarray: Predicted class labels for each sample.
         '''
+        membership = self._compute_membership(X)
+        h0 = np.argmax(membership)
+        self.neuron_activation[h0] = i
+
         K = self._compute_kernel(X, self.X_L)
         predictions = K @ self.beta
-        print(predictions)
-        return np.argmax(predictions, axis=1)
+        
+        return np.argmax(predictions, axis=1), predictions[0][np.argmax(predictions, axis=1)[0]], np.max(membership)
     
 
 class CoinClassifier:
@@ -440,14 +465,24 @@ class CoinClassifier:
     - `predict`: Predict the type of coin and its side.
     - `get_side_confidence`: Retrieve the probability confidence for the side classification.
     '''
-    def __init__(self):
+    def __init__(self, n_features_to_select=100, name='resnet50'):
         '''
         Initializes the CoinClassifier with pre-trained models and SVM.
         '''
-        self.feature_model = models.resnet50(pretrained=True)
-        self.feature_model = torch.nn.Sequential(*list(self.feature_model.children())[:-1]) 
         
-        self.reliefF = FeatureExtractorReliefF(self.feature_model)
+        model_dict = {
+        'resnet50': models.resnet50,
+        'regnet': models.regnet_y_400mf,
+        'efficientnet': models.efficientnet_b0,
+        'densenet': models.densenet121,
+        }
+        try:
+            self.feature_model = model_dict[name](pretrained=True)
+            self.feature_model = torch.nn.Sequential(*list(self.feature_model.children())[:-1]) 
+        except:
+            raise ValueError(f"Invalid model name '{name}'. Choose from: {list(model_dict.keys())}")
+ 
+        self.reliefF = FeatureExtractorReliefF(self.feature_model, n_features_to_select=n_features_to_select)
         
         self.side_classifier = SVC(kernel='rbf', probability=True)
         self.side_scaler = StandardScaler()  
@@ -455,16 +490,25 @@ class CoinClassifier:
         self.obverse_classifier = ARCIKELM(C=1.0, kernel='rbf', gamma='scale')
         self.reverse_classifier = ARCIKELM(C=1.0, kernel='rbf', gamma='scale')
         
+        self.augmenter = ImageAugmentation()
+        
         self.side_classifier_initialized = False
         self.obverse_classifier_initialized = False
         self.reverse_classifier_initialized = False
     
-    def prepare_reliefF(self, image_paths, labels, batch_size, version, path=None):
+        self.augment = T.Compose([
+            T.RandomAffine(degrees=10, translate=(0.05, 0.05)),
+            T.ToTensor(),
+            T.RandomErasing(p=0.3, scale=(0.02, 0.08), ratio=(0.5, 1.5), value='random')
+            ])
+        
+
+    def prepare_reliefF(self, batch_tensors, labels, batch_size, version, path=None):
         '''
         Prepare the ReliefF feature extractor.
         
         Parameters:
-        image_paths (list of str): List of paths to images for feature extraction.
+        image_batch (list of str): List of paths to images for feature extraction.
         batch_size (int): Number of images to process per batch.
         path (str, optional): Path to load the pre-trained ReliefF model if available.
         
@@ -472,11 +516,11 @@ class CoinClassifier:
         None
         '''
         if path is None:
-            self.reliefF.fit(image_paths, labels, version, batch_size)  
+            self.reliefF.fit(batch_tensors, labels, version, batch_size)  
         else:
             self.reliefF.load_relief(path) 
 
-    def prepare_features_batch(self, image_paths, version):
+    def prepare_features_batch(self, batch_tensors, version):
         '''
         Prepare feature vectors for a batch of images.
         
@@ -490,13 +534,9 @@ class CoinClassifier:
         features_list = []
         valid_paths = []
         
-        for img_path in image_paths:
-            features = self.reliefF([img_path], version, batch_size=1)
-            if features is not None:
-                features_list.append(features)
-                valid_paths.append(img_path)
+        features = self.reliefF(batch_tensors, version, batch_size=1)
                 
-        return np.array(features_list), valid_paths
+        return np.array(features), valid_paths
 
     def train_side_classifier(self, paths, labels):
         '''
@@ -522,41 +562,51 @@ class CoinClassifier:
         self.side_classifier.fit(X_scaled, y)
         self.side_classifier_initialized = True
 
-    def train_coin_classifiers(self, image_paths, labels, is_obverse=True):
+    def save_side_classifier(self, path):
+        os.makedirs(path, exist_ok=True) 
+        joblib.dump(self.side_classifier, path +'side_classifier.pkl')
+        joblib.dump(self.side_scaler, path + 'side_scaler.pkl')
+
+    def load_side_classifier(self, path):
+        self.side_classifier = joblib.load(path +  'side_classifier.pkl')
+        self.side_scaler = joblib.load(path + 'side_scaler.pkl')
+
+        self.side_classifier_initialized = True 
+
+    def train_coin_classifiers(self, batch_tensors, labels, is_avers=True, features = None, i = None):
         '''
         Train either the obverse or reverse classifier for coin classification.
         
         Parameters:
         image_paths (list of str): List of image paths to train on.
         labels (list of dict): Labels for the images.
-        is_obverse (bool): If True, train the obverse classifier; otherwise train the reverse classifier.
+        is_avers (bool): If True, train the obverse classifier; otherwise train the reverse classifier.
         
         Returns:
         valid_paths (list of str): List of image paths that had valid features.
         '''
-        features, valid_paths = self.prepare_features_batch(image_paths, 'class')
+        if features is None:
+            features, valid_paths = self.prepare_features_batch(batch_tensors, 'class')
         
-        # Get valid labels for training
-        valid_labels = [labels[i] for i, path in enumerate(image_paths) if path in valid_paths]
         
         # Select classifier based on obverse or reverse
-        classifier = self.obverse_classifier if is_obverse else self.reverse_classifier
-        initialized = self.obverse_classifier_initialized if is_obverse else self.reverse_classifier_initialized
+        classifier = self.obverse_classifier if is_avers else self.reverse_classifier
+        initialized = self.obverse_classifier_initialized if is_avers else self.reverse_classifier_initialized
         
         if not initialized:
             # Initialize the classifier if not already initialized
-            classifier.initialize(features, np.array(valid_labels))
-            if is_obverse:
+            classifier.initialize(features, np.array(labels))
+            if is_avers:
                 self.obverse_classifier_initialized = True
             else:
                 self.reverse_classifier_initialized = True
         else:
             # Perform sequential learning if the classifier has been initialized
-            classifier.sequential_learning(features, np.array(valid_labels))
+            classifier.sequential_learning(features, np.array(labels), i)
             
         return valid_paths
 
-    def predict(self, image_path):
+    def predict(self, image_path, image, i):
         '''
         Predict the coin type and side (obverse or reverse) for a given image.
         
@@ -575,18 +625,36 @@ class CoinClassifier:
         
         # Predict side (obverse or reverse)
         side_pred = self.side_classifier.predict(features_scaled)[0]
-        side_proba = self.side_classifier.predict_proba(features_scaled)[0]
-        
-        confidence_threshold = 0.7
-        if max(side_proba) < confidence_threshold:
-            return "uncertain", None  # Return uncertain if confidence is too low
         
         # Choose the appropriate classifier based on the side prediction
         classifier = self.obverse_classifier if side_pred == 0 else self.reverse_classifier
         features = self.reliefF(image_path, 'class')
-        coin_pred = classifier.predict(features.reshape(1, -1))[0]
+        coin_pred, probability, membership = classifier.predict(features.reshape(1, -1), i)
+        coin_pred = coin_pred[0]
+
+        # if probability > 0.8:
+        is_averse = True if side_pred == 0 else False
+        # print('membership: ', membership)
+        if membership < 0.6:
+            is_averse = True if side_pred == 0 else False
+            new_tensor_images = self.augmenter.generate_augmented_images(image, 9)
+            new_features = self.reliefF(new_tensor_images, 'class')
+            
+            self.add_classifier_class(None, is_averse, np.vstack([features, new_features]), i=i)
+            coin_pred = classifier.n_classes - 1 
+        # self.train_coin_classifiers(image_path, [coin_pred], is_averse, i=i)
+
+
+        return "obverse" if side_pred == 0 else "reverse", coin_pred, probability
+
+    def add_classifier_class(self, batch_tensors, is_avers, features=None, i=None):
+        if features is None:
+            features, valid_paths = self.prepare_features_batch(batch_tensors, 'class')
         
-        return "obverse" if side_pred == 0 else "reverse", coin_pred
+        classifier = self.obverse_classifier if is_avers else self.reverse_classifier
+        label = classifier.n_classes + 1
+        classifier.add_new_class(features, label, i)
+        
 
     def get_side_confidence(self, image_path):
         '''
